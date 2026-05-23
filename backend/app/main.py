@@ -31,7 +31,19 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+origins = [
+    "https://editIQ2.vercel.app",
+    "http://localhost:5173",
+    "http://localhost:3000"
+]
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 # Temp uploads directory
 TEMP_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "temp_uploads")
 os.makedirs(TEMP_DIR, exist_ok=True)
