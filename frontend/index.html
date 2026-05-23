@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EditIQ - TikTok Video Analyzer</title>
+    <!-- Google Fonts: Inter & JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <!-- FontAwesome for Premium Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Main Custom Style -->
+    <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="main-header">
+            <div class="logo-area">
+                <i class="fa-solid fa-wand-magic-sparkles logo-icon"></i>
+                <div class="logo-text">
+                    <h1>EditIQ</h1>
+                    <span>TikTok Editing Analyzer & Predictor</span>
+                </div>
+            </div>
+            <div class="ml-status-badge" id="mlStatusBadge">
+                <i class="fa-solid fa-brain badge-icon"></i>
+                <div class="badge-text">
+                    <span class="badge-title">Modello ML</span>
+                    <span class="badge-state" id="mlStateText">Verifica in corso...</span>
+                </div>
+                <button class="btn btn-sm btn-outline-purple" id="btnTrainModel" style="display: none;" onclick="trainMLModel()">
+                    <i class="fa-solid fa-gears"></i> Addestra
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Workspace -->
+        <main class="workspace-grid">
+            
+            <!-- Left Panel: Upload & Metrics Form -->
+            <section class="panel-card upload-panel">
+                <div class="panel-header">
+                    <h2><i class="fa-solid fa-cloud-arrow-up"></i> Carica Video</h2>
+                    <p class="panel-subtitle">Carica un MP4 ed inserisci i dati prestazionali (opzionali) per calibrare l'analisi.</p>
+                </div>
+                
+                <form id="analyzeForm" onsubmit="submitAnalysis(event)">
+                    <!-- Drag & Drop Upload Zone -->
+                    <div class="upload-zone" id="uploadZone" onclick="document.getElementById('videoFile').click()">
+                        <i class="fa-solid fa-video upload-icon"></i>
+                        <p class="upload-text">Trascina qui il tuo file MP4 o <span>sfoglia</span></p>
+                        <p class="upload-limit">Dimensione max consigliata: 50MB (formati supportati: MP4, MOV, AVI)</p>
+                        <input type="file" id="videoFile" accept="video/mp4,video/quicktime,video/x-msvideo" required style="display: none;" onchange="handleFileSelect(this)">
+                        <div class="selected-file-badge" id="selectedFileBadge" style="display: none;">
+                            <i class="fa-solid fa-file-video"></i>
+                            <span id="selectedFileName">Nessun file selezionato</span>
+                            <i class="fa-solid fa-circle-xmark remove-file-btn" onclick="clearFileSelect(event)"></i>
+                        </div>
+                    </div>
+
+                    <!-- Performance Metrics Section (Optional) -->
+                    <div class="metrics-section">
+                        <div class="section-title">
+                            <h3><i class="fa-solid fa-chart-line"></i> Metriche Video (Opzionale)</h3>
+                            <span class="section-badge">ML Dataset</span>
+                        </div>
+                        <p class="metrics-help">Fornire questi dati permetterà in futuro al modello ML di apprendere la correlazione reale tra stile di editing e viralità.</p>
+                        
+                        <div class="metrics-grid">
+                            <div class="form-group">
+                                <label for="views">Visualizzazioni</label>
+                                <div class="input-wrapper">
+                                    <i class="fa-solid fa-eye input-icon"></i>
+                                    <input type="number" id="views" placeholder="Es. 15000" min="0">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="likes">Mi Piace</label>
+                                <div class="input-wrapper">
+                                    <i class="fa-solid fa-heart input-icon"></i>
+                                    <input type="number" id="likes" placeholder="Es. 3400" min="0">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="shares">Condivisioni</label>
+                                <div class="input-wrapper">
+                                    <i class="fa-solid fa-share-nodes input-icon"></i>
+                                    <input type="number" id="shares" placeholder="Es. 120" min="0">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="saves">Salvati</label>
+                                <div class="input-wrapper">
+                                    <i class="fa-solid fa-bookmark input-icon"></i>
+                                    <input type="number" id="saves" placeholder="Es. 450" min="0">
+                                </div>
+                            </div>
+                            <div class="form-group full-width">
+                                <label for="retention_pct">Ritenzione Media (%)</label>
+                                <div class="input-wrapper">
+                                    <i class="fa-solid fa-percent-sign input-icon">%</i>
+                                    <input type="number" id="retention_pct" placeholder="Es. 62.5" min="0" max="100" step="0.1">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-block" id="btnSubmit">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> Analizza Video
+                    </button>
+                </form>
+            </section>
+
+            <!-- Right Panel: Results & Diagnostics -->
+            <section class="panel-card results-panel" id="resultsPanel">
+                <!-- Welcome/Placeholder view -->
+                <div class="results-placeholder" id="resultsPlaceholder">
+                    <i class="fa-solid fa-chart-bar placeholder-icon"></i>
+                    <h3>Nessun Video Analizzato</h3>
+                    <p>Carica un file video ed avvia l'analisi. I dettagli dei punteggi prestazionali, i tagli rilevati, l'energia audio e il report diagnostico appariranno qui.</p>
+                </div>
+
+                <!-- Report Content View (Hidden initially) -->
+                <div class="report-content" id="reportContent" style="display: none;">
+                    <div class="panel-header border-bottom">
+                        <div class="report-title-area">
+                            <span class="report-badge">Report Analisi</span>
+                            <h2 id="reportFilename">video_edit.mp4</h2>
+                            <p class="report-date" id="reportDate">Analizzato il 23/05/2026 alle 15:30</p>
+                        </div>
+                    </div>
+
+                    <!-- Scores Gauges Row -->
+                    <div class="scores-row">
+                        <!-- Score 1: Viral Score -->
+                        <div class="score-card accent-cyan">
+                            <div class="gauge-wrapper">
+                                <svg class="progress-ring" width="100" height="100">
+                                    <circle class="progress-ring-circle-bg" stroke="#1e293b" stroke-width="8" fill="transparent" r="40" cx="50" cy="50"/>
+                                    <circle class="progress-ring-circle" id="viralScoreRing" stroke="url(#cyanGradient)" stroke-width="8" fill="transparent" r="40" cx="50" cy="50"/>
+                                </svg>
+                                <div class="gauge-value" id="viralScoreVal">0</div>
+                            </div>
+                            <span class="score-label">Viral Score</span>
+                            <span class="score-desc" id="viralScoreDesc">Potenziale Virale</span>
+                        </div>
+
+                        <!-- Score 2: Hook Score -->
+                        <div class="score-card accent-green">
+                            <div class="gauge-wrapper">
+                                <svg class="progress-ring" width="100" height="100">
+                                    <circle class="progress-ring-circle-bg" stroke="#1e293b" stroke-width="8" fill="transparent" r="40" cx="50" cy="50"/>
+                                    <circle class="progress-ring-circle" id="hookScoreRing" stroke="url(#greenGradient)" stroke-width="8" fill="transparent" r="40" cx="50" cy="50"/>
+                                </svg>
+                                <div class="gauge-value" id="hookScoreVal">0</div>
+                            </div>
+                            <span class="score-label">Hook Score</span>
+                            <span class="score-desc">Gancio Iniziale (0-3s)</span>
+                        </div>
+
+                        <!-- Score 3: Pacing Score -->
+                        <div class="score-card accent-purple">
+                            <div class="gauge-wrapper">
+                                <svg class="progress-ring" width="100" height="100">
+                                    <circle class="progress-ring-circle-bg" stroke="#1e293b" stroke-width="8" fill="transparent" r="40" cx="50" cy="50"/>
+                                    <circle class="progress-ring-circle" id="pacingScoreRing" stroke="url(#purpleGradient)" stroke-width="8" fill="transparent" r="40" cx="50" cy="50"/>
+                                </svg>
+                                <div class="gauge-value" id="pacingScoreVal">0</div>
+                            </div>
+                            <span class="score-label">Pacing Score</span>
+                            <span class="score-desc">Ritmo e Tagli</span>
+                        </div>
+
+                        <!-- Score 4: Retention Risk -->
+                        <div class="score-card accent-orange">
+                            <div class="gauge-wrapper">
+                                <svg class="progress-ring" width="100" height="100">
+                                    <circle class="progress-ring-circle-bg" stroke="#1e293b" stroke-width="8" fill="transparent" r="40" cx="50" cy="50"/>
+                                    <circle class="progress-ring-circle" id="riskScoreRing" stroke="url(#orangeGradient)" stroke-width="8" fill="transparent" r="40" cx="50" cy="50"/>
+                                </svg>
+                                <div class="gauge-value" id="riskScoreVal">0</div>
+                            </div>
+                            <span class="score-label">Skip Risk</span>
+                            <span class="score-desc">Rischio Abbandono</span>
+                        </div>
+                    </div>
+
+                    <!-- SVG Gradient Definitions -->
+                    <svg width="0" height="0" style="position: absolute;">
+                        <defs>
+                            <linearGradient id="cyanGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#00f2fe" />
+                                <stop offset="100%" stop-color="#4facfe" />
+                            </linearGradient>
+                            <linearGradient id="greenGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#00ff87" />
+                                <stop offset="100%" stop-color="#60efff" />
+                            </linearGradient>
+                            <linearGradient id="purpleGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#b92b27" />
+                                <stop offset="100%" stop-color="#1565c0" />
+                            </linearGradient>
+                            <linearGradient id="orangeGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#ff9900" />
+                                <stop offset="100%" stop-color="#ff5e62" />
+                            </linearGradient>
+                        </defs>
+                    </svg>
+
+                    <!-- ML Indicator block -->
+                    <div class="ml-prediction-callout" id="mlPredictionCallout" style="display: none;">
+                        <i class="fa-solid fa-microchip-ascii callout-icon"></i>
+                        <div class="callout-content">
+                            <h4>Ritenzione Predetta dal Modello ML: <strong id="mlPredictedVal">0%</strong></h4>
+                            <p>Questo valore è stimato dal modello Random Forest addestrato sui dati reali dei tuoi edit precedenti.</p>
+                        </div>
+                    </div>
+
+                    <!-- Diagnostics & Recommendations -->
+                    <div class="diagnostics-section">
+                        <div class="section-title-bar">
+                            <h3><i class="fa-solid fa-circle-nodes"></i> Valutazione Pratica</h3>
+                        </div>
+                        <div class="feedback-container">
+                            <div class="feedback-col">
+                                <h4 class="feedback-header text-emerald"><i class="fa-solid fa-circle-check"></i> Punti di Forza</h4>
+                                <ul class="feedback-list" id="strengthsList">
+                                    <!-- Strengths will be rendered here -->
+                                </ul>
+                            </div>
+                            <div class="feedback-col">
+                                <h4 class="feedback-header text-amber"><i class="fa-solid fa-circle-exclamation"></i> Suggerimenti di Miglioramento</h4>
+                                <ul class="feedback-list" id="improvementsList">
+                                    <!-- Improvements will be rendered here -->
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Extracted Features Breakdown Grid -->
+                    <div class="features-breakdown">
+                        <div class="section-title-bar">
+                            <h3><i class="fa-solid fa-sliders"></i> Feature Estratte dal Video</h3>
+                        </div>
+                        <div class="features-table-grid">
+                            <div class="feature-item">
+                                <span class="feature-name">Durata Video</span>
+                                <span class="feature-val" id="featDuration">0.0s</span>
+                            </div>
+                            <div class="feature-item">
+                                <span class="feature-name">Tagli Totali</span>
+                                <span class="feature-val" id="featCutsCount">0</span>
+                            </div>
+                            <div class="feature-item">
+                                <span class="feature-name">Tagli per Secondo</span>
+                                <span class="feature-val" id="featCutsPerSec">0.00</span>
+                            </div>
+                            <div class="feature-item">
+                                <span class="feature-name">Scena Media (sec)</span>
+                                <span class="feature-val" id="featAvgScene">0.0s</span>
+                            </div>
+                            <div class="feature-item">
+                                <span class="feature-name">Intensità Movimento</span>
+                                <span class="feature-val" id="featMotion">0.0</span>
+                            </div>
+                            <div class="feature-item">
+                                <span class="feature-name">Stabilità Visiva</span>
+                                <span class="feature-val" id="featStability">0%</span>
+                            </div>
+                            <div class="feature-item">
+                                <span class="feature-name">Hook Speed</span>
+                                <span class="feature-val" id="featHookSpeed">0.0s</span>
+                            </div>
+                            <div class="feature-item">
+                                <span class="feature-name">Sync Video-Audio (AV)</span>
+                                <span class="feature-val" id="featAvSync">0%</span>
+                            </div>
+                            <div class="feature-item">
+                                <span class="feature-name">Energia Audio Media</span>
+                                <span class="feature-val" id="featAudioEnergy">0.00</span>
+                            </div>
+                            <div class="feature-item">
+                                <span class="feature-name">Beat Audio Rilevati</span>
+                                <span class="feature-val" id="featAudioSpikes">0</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Bottom Panel: Historical Runs & Comparisons -->
+        <section class="panel-card history-panel">
+            <div class="panel-header inline-header">
+                <div>
+                    <h2><i class="fa-solid fa-history"></i> Storico Analisi & Dataset</h2>
+                    <p class="panel-subtitle">Confronta tutti i video analizzati in precedenza. Clicca su un video per visualizzare il report diagnostico completo.</p>
+                </div>
+                <div class="history-actions">
+                    <span class="history-counter" id="historyCounter">Caricamento...</span>
+                </div>
+            </div>
+            
+            <div class="table-container">
+                <table class="history-table" id="historyTable">
+                    <thead>
+                        <tr>
+                            <th>Video</th>
+                            <th>Data</th>
+                            <th>Durata</th>
+                            <th>Viral Score</th>
+                            <th>Hook Score</th>
+                            <th>Pacing Score</th>
+                            <th>Skip Risk</th>
+                            <th>Visualizzazioni</th>
+                            <th>Ritenzione reale</th>
+                            <th>ML Predict</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyTableBody">
+                        <!-- History items will be rendered here -->
+                        <tr>
+                            <td colspan="10" class="table-empty">Nessuna analisi salvata nel database. Carica il tuo primo video!</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+
+    <!-- Spinner Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loader-box">
+            <div class="spinner"></div>
+            <h3 id="loaderTitle">Analisi Video in Corso...</h3>
+            <p id="loaderMessage">Attendere l'estrazione delle feature visive e sonore dal file MP4. L'operazione richiede solitamente 5-15 secondi.</p>
+        </div>
+    </div>
+
+    <!-- Main Logic Scripts -->
+    <script src="/static/app.js"></script>
+</body>
+</html>

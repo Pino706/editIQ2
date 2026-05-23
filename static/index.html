@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EditIQ - TikTok Edit Analyzer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/app.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+</head>
+<body>
+  <div class="surface-grid" aria-hidden="true"></div>
+  <div class="surface-noise" aria-hidden="true"></div>
+  <div class="cursor-light" aria-hidden="true"></div>
+
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="EditIQ home">
+      <span class="brand-mark" aria-hidden="true">
+        <span class="brand-pulse"></span>
+      </span>
+      <span class="brand-copy">
+        <span class="brand-name">EditIQ</span>
+        <span class="brand-line">Short-form signal studio</span>
+      </span>
+    </a>
+
+    <nav class="tab-nav" aria-label="Primary">
+      <button type="button" class="tab active" data-tab="analyze">
+        <i data-lucide="scan-line"></i>
+        <span>AI predict video</span>
+      </button>
+      <button type="button" class="tab" data-tab="train">
+        <i data-lucide="blocks"></i>
+        <span>Train AI</span>
+      </button>
+      <button type="button" class="tab" data-tab="account">
+        <i data-lucide="user-round-check"></i>
+        <span>Your Account</span>
+      </button>
+    </nav>
+
+    <p id="model-status" class="model-status">Checking model...</p>
+  </header>
+
+  <main class="layout">
+    <div id="panel-analyze" class="tab-panel active">
+      <section class="hero-workbench" data-reveal>
+        <div class="hero-copy">
+          <p class="eyebrow">Edit intelligence</p>
+          <h1>Pressure-test the cut before it hits the feed.</h1>
+          <p class="hero-subcopy">Upload a video, add optional performance data, and get a sharp read on hook, pacing, retention risk, predicted views, and signal quality.</p>
+
+          <div class="signal-strip" aria-label="Analysis signals">
+            <span><i data-lucide="zap"></i> Hook</span>
+            <span><i data-lucide="activity"></i> Motion</span>
+            <span><i data-lucide="audio-lines"></i> Audio</span>
+            <span><i data-lucide="trending-up"></i> Views</span>
+          </div>
+        </div>
+
+        <section class="upload-card" aria-labelledby="analyze-title">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">New analysis</p>
+              <h2 id="analyze-title">Analyze Edit</h2>
+            </div>
+            <span class="panel-chip">Local processing</span>
+          </div>
+
+          <form id="analyze-form">
+            <div id="drop-zone" class="drop-zone">
+              <input type="file" id="video-input" accept="video/mp4,video/*,.mp4,.mov,.webm" hidden />
+              <span class="drop-icon" aria-hidden="true">
+                <i data-lucide="upload-cloud"></i>
+              </span>
+              <p class="drop-label">Drop video or <button type="button" id="browse-btn" class="link-btn">browse</button></p>
+              <p id="file-name" class="file-name"></p>
+            </div>
+
+            <div class="metrics-grid">
+              <label>Views <input type="number" name="views" min="0" placeholder="Optional" /></label>
+              <label>Likes <input type="number" name="likes" min="0" placeholder="Optional" /></label>
+              <label>Shares <input type="number" name="shares" min="0" placeholder="Optional" /></label>
+              <label>Saves <input type="number" name="saves" min="0" placeholder="Optional" /></label>
+              <label class="span-2">Retention % <input type="number" name="retention_pct" min="0" max="100" step="0.1" placeholder="Optional" /></label>
+            </div>
+
+            <button type="submit" class="btn-primary" id="analyze-btn">
+              <i data-lucide="sparkles"></i>
+              <span>Analyze Video</span>
+            </button>
+          </form>
+        </section>
+
+        <aside class="signal-preview" aria-hidden="true">
+          <div class="preview-frame">
+            <div class="reel-window">
+              <span class="scanline"></span>
+              <span class="frame-dot dot-a"></span>
+              <span class="frame-dot dot-b"></span>
+              <span class="frame-dot dot-c"></span>
+            </div>
+            <div class="timeline-bars">
+              <span style="--h: 34%"></span>
+              <span style="--h: 78%"></span>
+              <span style="--h: 48%"></span>
+              <span style="--h: 92%"></span>
+              <span style="--h: 56%"></span>
+              <span style="--h: 70%"></span>
+              <span style="--h: 42%"></span>
+              <span style="--h: 84%"></span>
+              <span style="--h: 60%"></span>
+              <span style="--h: 38%"></span>
+            </div>
+          </div>
+        </aside>
+      </section>
+
+      <div id="loading-overlay" class="loading-overlay hidden">
+        <div class="loader-panel">
+          <div class="loader-orbit" aria-hidden="true"></div>
+          <p id="loading-status">Preparing analysis...</p>
+        </div>
+      </div>
+
+      <section id="report-section" class="report-section hidden" data-reveal>
+        <div class="report-head">
+          <div>
+            <p class="eyebrow">Analysis report</p>
+            <h2>Performance forecast</h2>
+          </div>
+          <p id="report-meta" class="report-meta"></p>
+        </div>
+
+        <div class="report-grid">
+          <div id="predicted-views-card" class="predicted-views-card hidden">
+            <span class="predicted-label">Predicted views</span>
+            <span id="predicted-views-value" class="predicted-views-value">-</span>
+            <p id="predicted-views-sub" class="predicted-views-sub"></p>
+            <p id="predicted-views-compare" class="predicted-views-compare hidden"></p>
+          </div>
+
+          <div class="gauges">
+            <div class="gauge-card" data-score="viral">
+              <svg viewBox="0 0 120 120" class="gauge-svg"><circle class="gauge-bg" cx="60" cy="60" r="52"/><circle class="gauge-fill viral" cx="60" cy="60" r="52"/></svg>
+              <span class="gauge-value" id="gauge-viral">-</span>
+              <span class="gauge-label">Viral Score</span>
+            </div>
+            <div class="gauge-card" data-score="hook">
+              <svg viewBox="0 0 120 120" class="gauge-svg"><circle class="gauge-bg" cx="60" cy="60" r="52"/><circle class="gauge-fill hook" cx="60" cy="60" r="52"/></svg>
+              <span class="gauge-value" id="gauge-hook">-</span>
+              <span class="gauge-label">Hook</span>
+            </div>
+            <div class="gauge-card" data-score="pacing">
+              <svg viewBox="0 0 120 120" class="gauge-svg"><circle class="gauge-bg" cx="60" cy="60" r="52"/><circle class="gauge-fill pacing" cx="60" cy="60" r="52"/></svg>
+              <span class="gauge-value" id="gauge-pacing">-</span>
+              <span class="gauge-label">Pacing</span>
+            </div>
+            <div class="gauge-card risk" data-score="retention">
+              <svg viewBox="0 0 120 120" class="gauge-svg"><circle class="gauge-bg" cx="60" cy="60" r="52"/><circle class="gauge-fill risk" cx="60" cy="60" r="52"/></svg>
+              <span class="gauge-value" id="gauge-retention">-</span>
+              <span class="gauge-label">Retention Risk</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="analysis-upgrade-grid">
+          <div class="recommendation-panel">
+            <p class="eyebrow">Final recommendation</p>
+            <h3 id="final-recommendation">Analyze a video to get account-aware recommendations.</h3>
+            <p id="prediction-change-note" class="recommendation-note"></p>
+            <div id="advanced-score-grid" class="advanced-score-grid"></div>
+          </div>
+          <div class="chart-card">
+            <h3>Quality dimensions</h3>
+            <canvas id="quality-radar-chart"></canvas>
+          </div>
+        </div>
+
+        <div class="insight-columns">
+          <div id="justification-section" class="insight-panel hidden">
+            <h3>Why this view count?</h3>
+            <p id="justification-summary" class="justification-summary"></p>
+            <ul id="justification-bullets" class="justification-bullets"></ul>
+            <div id="similar-videos" class="similar-videos hidden">
+              <h4>Similar edits in your library</h4>
+              <ul id="similar-videos-list"></ul>
+            </div>
+          </div>
+
+          <div id="tier-probs-section" class="insight-panel hidden">
+            <h3>View tier probability</h3>
+            <p class="tier-probs-note">Based on your trained data and retention signals.</p>
+            <div id="tier-probs-list" class="tier-probs-list"></div>
+          </div>
+        </div>
+
+        <div class="feedback-grid">
+          <div class="feedback-card strengths">
+            <h3><i data-lucide="circle-check"></i> Strengths</h3>
+            <ul id="strengths-list"></ul>
+          </div>
+          <div class="feedback-card improvements">
+            <h3><i data-lucide="circle-alert"></i> Opportunities</h3>
+            <ul id="improvements-list"></ul>
+          </div>
+        </div>
+
+        <div class="charts-row">
+          <div class="chart-card">
+            <h3>Motion over time</h3>
+            <canvas id="motion-chart"></canvas>
+          </div>
+          <div class="chart-card">
+            <h3>Audio energy</h3>
+            <canvas id="audio-chart"></canvas>
+          </div>
+        </div>
+
+        <div class="table-section">
+          <h3 class="section-title">Signal intelligence</h3>
+          <div class="table-wrap">
+            <table class="feature-table insights-table">
+              <thead>
+                <tr><th>Signal</th><th>Value</th><th>Learned from your data</th><th>TikTok algorithm</th></tr>
+              </thead>
+              <tbody id="feature-insights-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div id="panel-train" class="tab-panel">
+      <section class="training-lab" data-reveal>
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Model training</p>
+            <h1>Teach EditIQ your audience.</h1>
+          </div>
+          <p class="section-subcopy">Batch process labeled videos, train the views model, and compare your strongest edits.</p>
+        </div>
+
+        <div class="training-grid">
+          <div class="training-main">
+            <div class="lab-panel">
+              <div class="panel-heading">
+                <h2>Training Queue</h2>
+                <span id="views-model-badge" class="badge badge-muted">Model not trained</span>
+              </div>
+              <p id="train-warning" class="train-warning hidden"></p>
+
+              <div class="dataset-progress-wrap">
+                <div class="dataset-progress-label">
+                  <span id="dataset-progress-text">0 / 200 labeled</span>
+                </div>
+                <div class="progress-bar"><div id="dataset-progress-fill" class="progress-fill" style="width: 0%"></div></div>
+              </div>
+
+              <div id="train-drop-zone" class="drop-zone train-drop">
+                <input type="file" id="train-files-input" accept="video/mp4,video/*,.mp4,.mov,.webm" multiple hidden />
+                <span class="drop-icon" aria-hidden="true">
+                  <i data-lucide="folder-up"></i>
+                </span>
+                <p class="drop-label">Drop videos or <button type="button" id="train-browse-btn" class="link-btn">browse</button></p>
+              </div>
+
+              <div class="table-wrap training-queue-wrap hidden" id="training-queue-wrap">
+                <table class="training-table">
+                  <thead>
+                    <tr><th>File</th><th>Views</th><th>Status</th><th></th></tr>
+                  </thead>
+                  <tbody id="training-queue-tbody"></tbody>
+                </table>
+              </div>
+
+              <div class="training-actions">
+                <button type="button" id="process-all-btn" class="btn-primary" disabled>
+                  <i data-lucide="play"></i>
+                  <span>Process all</span>
+                </button>
+                <button type="button" id="train-views-btn" class="btn-secondary" disabled>
+                  <i data-lucide="brain-circuit"></i>
+                  <span>Train views model</span>
+                </button>
+                <span id="process-progress" class="process-progress"></span>
+              </div>
+
+              <p id="train-result" class="train-result"></p>
+            </div>
+          </div>
+
+          <aside class="training-side">
+            <div class="flow-panel">
+              <h2>Training Flow</h2>
+              <ol class="train-steps">
+                <li><strong>Process all</strong> extracts features and saves views.</li>
+                <li><strong>Train views model</strong> fits your local ML model.</li>
+                <li><strong>Analyze</strong> predicts views on fresh uploads.</li>
+              </ol>
+            </div>
+          </aside>
+        </div>
+
+        <div class="charts-row">
+          <div class="chart-card">
+            <h3>Your dataset</h3>
+            <canvas id="dataset-chart"></canvas>
+          </div>
+          <div class="chart-card">
+            <h3>Feature importance</h3>
+            <canvas id="importance-chart"></canvas>
+          </div>
+        </div>
+
+        <div class="table-section">
+          <h3 class="section-title">Ranked by actual views</h3>
+          <div class="table-wrap">
+            <table class="training-table ranked-table">
+              <thead>
+                <tr><th>Rank</th><th>File</th><th>Views</th><th>Predicted</th><th>Tier</th></tr>
+              </thead>
+              <tbody id="ranked-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div id="panel-account" class="tab-panel">
+      <section class="account-lab" data-reveal>
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">TikTok account</p>
+            <h1>Your Account</h1>
+          </div>
+          <p class="section-subcopy">Connect TikTok through the backend to compare every upload against your recent account momentum.</p>
+        </div>
+
+        <div id="account-empty" class="account-empty">
+          <div>
+            <p class="eyebrow">Secure OAuth</p>
+            <h2>Connect TikTok to unlock account intelligence.</h2>
+            <p>No token is exposed to the browser. EditIQ stores and refreshes access server-side.</p>
+          </div>
+          <a class="btn-primary account-login-btn" href="/api/tiktok/login">
+            <i data-lucide="log-in"></i>
+            <span>Sign in with TikTok</span>
+          </a>
+        </div>
+
+        <div id="account-dashboard" class="account-dashboard hidden">
+          <div class="account-profile-card">
+            <img id="account-avatar" alt="" />
+            <div>
+              <p class="eyebrow">Connected creator</p>
+              <h2 id="account-name">TikTok creator</h2>
+              <p id="account-bio"></p>
+            </div>
+            <button type="button" class="btn-secondary" id="refresh-account-btn">
+              <i data-lucide="refresh-cw"></i>
+              <span>Refresh</span>
+            </button>
+          </div>
+
+          <div id="account-metric-grid" class="account-metric-grid"></div>
+
+          <div class="charts-row">
+            <div class="chart-card">
+              <h3>Recent performance</h3>
+              <canvas id="account-performance-chart"></canvas>
+            </div>
+            <div class="chart-card">
+              <h3>Video comparison</h3>
+              <canvas id="account-comparison-chart"></canvas>
+            </div>
+          </div>
+
+          <div class="account-video-section">
+            <div class="panel-heading">
+              <h2>Recent uploads</h2>
+              <span id="account-summary-chip" class="panel-chip">Loading</span>
+            </div>
+            <div id="recent-upload-grid" class="recent-upload-grid"></div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <section class="history-card" data-reveal>
+      <div class="history-header">
+        <div>
+          <p class="eyebrow">Library</p>
+          <h2>History</h2>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="history-table">
+          <thead>
+            <tr>
+              <th>ID</th><th>File</th><th>Viral</th><th>Views</th><th>Predicted</th><th>Hook</th><th>Pacing</th><th>Cuts/s</th>
+            </tr>
+          </thead>
+          <tbody id="history-tbody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <a href="/docs" target="_blank">API Docs</a>
+    <span>Videos deleted after processing</span>
+    <span>FFmpeg + OpenCV</span>
+  </footer>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

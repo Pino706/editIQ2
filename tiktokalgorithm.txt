@@ -1,0 +1,246 @@
+TikTok algorithm README
+
+This document explains how the recommendation system used by TikTok works, with a specific focus on short-form edited content such as edits, AMVs, cinematic clips, transitions, velocity edits, and similar formats.
+
+The goal is to describe how content is distributed on the For You Page, what signals matter most, and how editors can optimize their videos based on how the system actually behaves in practice.
+
+Overview of the system
+
+TikTok does not use a single global ranking system. Instead, it uses a personalized recommendation engine that builds a unique feed for every user.
+
+Each video uploaded is not immediately shown to everyone. Instead, it is tested in small batches of users. Based on performance metrics, the system decides whether to expand distribution or stop showing the video.
+
+This creates a cascading distribution model:
+
+Step 1: Initial test pool (small audience)
+Step 2: Expanded test pool (if performance is strong)
+Step 3: Larger scale distribution
+Step 4: Viral scaling (only for top performing content)
+
+The entire system is driven by predicted user satisfaction, not follower count or creator size.
+
+The For You Page logic
+
+The For You Page is the main distribution surface. It is fully algorithmic and based on predicted interest.
+
+Each user’s feed is constructed using a ranking model that evaluates:
+
+Likely watch time
+Likely completion rate
+Likely rewatch probability
+Likely engagement actions (likes, comments, shares, saves)
+Likely negative actions (skip, swipe away, “not interested”)
+
+The system constantly adjusts based on real-time feedback loops.
+
+Important concept:
+The algorithm does not “decide” if a video is good. It measures how users behave when exposed to it.
+
+Core ranking signals
+
+TikTok uses many signals, but they can be grouped into 3 main categories.
+
+3.1 User interaction signals
+
+These are the most important signals:
+
+Watch time (absolute duration watched)
+Completion rate (percentage of video watched)
+Rewatch rate (loops or repeated views)
+Shares (very strong positive signal)
+Saves / favorites (strong quality signal)
+Comments (engagement depth)
+Likes (light positive signal, weaker than watch time)
+
+For edits, completion rate and rewatch rate are usually the most critical.
+
+3.2 Content signals
+
+These describe what the video is about:
+
+Captions and on-screen text
+Hashtags (used for categorization, not ranking power alone)
+Audio / sound used
+Visual content recognition (machine vision analysis)
+Topic classification (sports, anime, cinematic edits, etc.)
+Language detection
+
+For edited content, audio choice and visual clarity are particularly important because they help the system classify the video into interest clusters.
+
+3.3 Context signals
+
+These are secondary signals:
+
+Device type
+Location region
+Language settings
+Time of posting
+Network conditions
+
+These signals mainly help initial distribution, not long-term virality.
+
+Initial distribution (“test phase”)
+
+When a video is uploaded, the system does not immediately push it to a large audience.
+
+Instead, it is shown to a small, mixed sample of users who are likely to have interest overlap with the content.
+
+During this phase, the algorithm collects performance data.
+
+The most important evaluation window is the first batch of impressions.
+
+If the video performs above a dynamic threshold, it enters a second wave.
+
+If it performs poorly, distribution slows down or stops entirely.
+
+This is why early engagement is critical.
+
+What “good performance” actually means
+
+For edited content, performance is not based on likes.
+
+The system primarily evaluates:
+
+Did users stop scrolling?
+Did users watch past 1–2 seconds?
+Did users complete the video?
+Did users rewatch it?
+Did users share it?
+Did users save it?
+
+A video can have low likes but still go viral if retention metrics are strong.
+
+Specific behavior for edited content
+
+Edited content behaves differently compared to talking-head or informational videos.
+
+This is because edits rely heavily on emotional pacing and visual rhythm.
+
+The algorithm tends to classify edits into clusters such as:
+
+cinematic edits
+anime edits
+sports edits
+motivation edits
+aesthetic transitions
+velocity / shake edits
+
+Once classified, the video is tested against users who previously engaged with similar content.
+
+Key factor: pattern matching
+TikTok groups users based on past behavior and matches edits to those clusters.
+
+Retention as the dominant factor
+
+Retention is the strongest signal in the entire system.
+
+Key retention metrics:
+
+1-second hold rate
+3-second hold rate
+average watch time
+full watch percentage
+loop rate
+
+For edits, the first 1–2 seconds are critical.
+
+If users swipe immediately, the video is marked as low relevance.
+
+If users stay, even without liking, the video continues testing.
+
+The importance of the hook
+
+For edited videos, the “hook” is not just a concept, it is a ranking gate.
+
+A strong hook:
+
+immediately presents motion or visual change
+avoids empty intro space
+starts with high visual density
+creates curiosity or emotional tension instantly
+syncs audio and visuals from frame 0
+
+A weak hook causes early drop-off, which kills distribution regardless of later quality.
+
+Rewatch loops
+
+One of the strongest signals for edits is rewatch behavior.
+
+Rewatch occurs when:
+
+the video is short enough to loop naturally
+the ending connects visually or musically to the beginning
+the viewer is confused in a positive way and replays
+transitions are fast and require multiple viewings to fully process
+
+Rewatches heavily increase perceived content value in the system.
+
+Negative signals
+
+The algorithm also tracks negative feedback:
+
+fast swiping away
+skipping within first seconds
+tapping “not interested”
+low completion rate
+
+These signals reduce distribution potential faster than likes can increase it.
+
+Why follower count does not matter much
+
+TikTok explicitly separates follower graph from recommendation graph.
+
+This means:
+
+followers do not guarantee reach
+old viral success does not guarantee future success
+every video is evaluated independently
+
+A small account can outperform large accounts if retention metrics are stronger.
+
+Content saturation and fatigue
+
+The system avoids overexposing users to repetitive content.
+
+This includes:
+
+repeated sounds
+identical templates
+same visual structure
+same creator appearing too frequently
+
+For editors, this means variation matters.
+
+Even if style is consistent, execution should vary.
+
+Practical implications for editors
+
+From a system perspective, the most important goals when creating edits are:
+
+maximize first 2 seconds retention
+maximize total watch time
+maximize replay probability
+maximize emotional reaction (share triggers)
+ensure clear content classification (avoid ambiguity)
+
+Good editing is not only aesthetic, it is behavioral engineering aligned with algorithm signals.
+
+Summary model
+
+In simplified form, TikTok ranking behavior can be understood as:
+
+For each video:
+
+Show to small test audience
+Measure retention and engagement
+Compare to expected performance baseline
+Expand distribution if above threshold
+Repeat until plateau or viral scale
+
+The system is continuously learning and adjusting thresholds dynamically.
+
+Final note
+
+For edited content, success is not determined by editing complexity alone, but by how effectively the edit influences viewer behavior in the first seconds and throughout the entire duration.
+
+The algorithm amplifies content that holds attention, creates rewatch loops, and generates strong engagement signals.
