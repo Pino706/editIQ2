@@ -8,14 +8,15 @@ EditIQ learns from **your real TikTok view counts**, not from the heuristic vira
 2. Drop **many MP4s** (bulk) into the training zone.
 3. Enter each video’s **view count** from TikTok Analytics (required before processing).
 4. Click **Process all** — each file is analyzed and stored with features + views.
-5. When you have **at least 10** labeled videos (50 recommended), click **Train views model**.
+5. When you have **at least 5** labeled videos you can train a rough model; use **10+** for directional reads and **50+** for better accuracy.
 6. Switch to **Analyze** → upload a **new** edit (views optional) → see **Predicted views**.
 
 ## Requirements
 
 | Item | Value |
 |------|--------|
-| Minimum to train | **10** videos with `views > 0` |
+| Minimum to train | **5** videos with `views > 0` |
+| Better first model | **10+** style-matched videos |
 | Recommended dataset | **50** diverse view counts |
 | Target | `log1p(views)` → prediction `expm1(model output)` |
 
@@ -48,9 +49,9 @@ Heuristic `viral_score` is **not** replaced by the views model.
 
 ## Feature vector
 
-Same 11 features for every video (see `app/views_model.py`):
+Same feature vector for every video (see `app/views_model.py`): core cut/motion/audio signals plus early hook, long-gap, loop, silence, and retention-proxy features.
 
-`cuts_count`, `cuts_per_second`, `avg_scene_duration`, `motion_intensity`, `visual_change_rate`, `visual_stability`, `hook_speed`, `audio_energy`, `audio_spikes_count`, `audio_pacing`, `av_sync_score`
+The dataset should stay focused on your editing style. Add variety in results (low, normal, breakout views), not random unrelated content.
 
 ## Artifacts
 

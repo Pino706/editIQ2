@@ -32,6 +32,12 @@ CREATE TABLE IF NOT EXISTS videos (
     shares INTEGER,
     saves INTEGER,
     retention_pct REAL,
+    style_profile TEXT,
+    niche TEXT,
+    caption TEXT,
+    hashtags TEXT,
+    sound_name TEXT,
+    posted_at TEXT,
     cuts_count INTEGER,
     cuts_per_second REAL,
     avg_scene_duration REAL,
@@ -116,6 +122,17 @@ def _migrate(conn: sqlite3.Connection) -> None:
         conn.execute("ALTER TABLE videos ADD COLUMN predicted_views INTEGER")
     if "features_extra_json" not in cols:
         conn.execute("ALTER TABLE videos ADD COLUMN features_extra_json TEXT")
+    optional_video_cols = {
+        "style_profile": "TEXT",
+        "niche": "TEXT",
+        "caption": "TEXT",
+        "hashtags": "TEXT",
+        "sound_name": "TEXT",
+        "posted_at": "TEXT",
+    }
+    for col, typ in optional_video_cols.items():
+        if col not in cols:
+            conn.execute(f"ALTER TABLE videos ADD COLUMN {col} {typ}")
     acct_cols = {row[1] for row in conn.execute("PRAGMA table_info(tiktok_accounts)")}
     optional_account_cols = {
         "is_verified": "INTEGER",
@@ -172,6 +189,12 @@ def insert_analysis(record: dict[str, Any]) -> int:
         "shares",
         "saves",
         "retention_pct",
+        "style_profile",
+        "niche",
+        "caption",
+        "hashtags",
+        "sound_name",
+        "posted_at",
         "cuts_count",
         "cuts_per_second",
         "avg_scene_duration",
@@ -216,7 +239,7 @@ def list_history(limit: int = 100) -> list[dict[str, Any]]:
             """
             SELECT id, filename, timestamp, duration, viral_score, hook_score,
                    pacing_score, retention_risk, cuts_per_second, motion_intensity,
-                   views, likes, is_ml_predicted, predicted_views
+                   views, likes, is_ml_predicted, predicted_views, style_profile, niche
             FROM videos
             ORDER BY id DESC
             LIMIT ?
@@ -285,13 +308,26 @@ def list_labeled_for_training() -> list[dict[str, Any]]:
     return [_row_to_dict(r) for r in rows]
 
 
+def list_export_rows(labeled_only: bool = False) -> list[dict[str, Any]]:
+    where = "WHERE views IS NOT NULL AND views > 0" if labeled_only else ""
+    with get_connection() as conn:
+        rows = conn.execute(
+            f"""
+            SELECT * FROM videos
+            {where}
+            ORDER BY id DESC
+            """
+        ).fetchall()
+    return [_row_to_dict(r) for r in rows]
+
+
 def list_labeled_summary() -> list[dict[str, Any]]:
     with get_connection() as conn:
         rows = conn.execute(
             """
             SELECT id, filename, views, duration, viral_score, hook_score,
                    pacing_score, cuts_per_second, motion_intensity, predicted_views,
-                   timestamp
+                   timestamp, style_profile, niche, sound_name
             FROM videos
             WHERE views IS NOT NULL AND views > 0
             ORDER BY views DESC
@@ -305,6 +341,34 @@ def update_views(video_id: int, views: int) -> bool:
         cur = conn.execute(
             "UPDATE videos SET views = ? WHERE id = ?",
             (views, video_id),
+        )
+        conn.commit()
+        return cur.rowcount > 0
+
+
+def update_analysis_labels(video_id: int, fields: dict[str, Any]) -> bool:
+    allowed = {
+        "views",
+        "likes",
+        "shares",
+        "saves",
+        "retention_pct",
+        "style_profile",
+        "niche",
+        "caption",
+        "hashtags",
+        "sound_name",
+        "posted_at",
+    }
+    clean = {k: v for k, v in fields.items() if k in allowed}
+    if not clean:
+        return get_analysis(video_id) is not None
+    assignments = ", ".join(f"{k} = ?" for k in clean)
+    values = list(clean.values()) + [video_id]
+    with get_connection() as conn:
+        cur = conn.execute(
+            f"UPDATE videos SET {assignments} WHERE id = ?",
+            values,
         )
         conn.commit()
         return cur.rowcount > 0
@@ -570,6 +634,12 @@ def build_record(
         "shares": meta.get("shares"),
         "saves": meta.get("saves"),
         "retention_pct": meta.get("retention_pct"),
+        "style_profile": meta.get("style_profile"),
+        "niche": meta.get("niche"),
+        "caption": meta.get("caption"),
+        "hashtags": meta.get("hashtags"),
+        "sound_name": meta.get("sound_name"),
+        "posted_at": meta.get("posted_at"),
         **base_feats,
         **scores,
         "is_ml_predicted": 1 if is_ml else 0,

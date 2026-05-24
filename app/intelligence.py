@@ -29,6 +29,7 @@ def build_prediction_package(
         + 0.15 * visual_quality,
         1,
     )
+    engagement = _engagement_forecast(adjusted_views, account_summary, scores, account_fit)
 
     return {
         "predicted_views_base": base_views,
@@ -50,6 +51,7 @@ def build_prediction_package(
         "why_prediction_changed": _why_changed(base_views, adjusted_views, account_fit),
         "final_recommendation": _recommendation(scores, account_fit, viral_probability),
         "account_context_available": bool(account_dashboard.get("connected")),
+        "engagement_forecast": engagement,
     }
 
 
@@ -120,6 +122,53 @@ def _recommendation(scores: dict[str, Any], account_fit: dict[str, Any], viral_p
     if account_fit["account_fit_score"] is not None and account_fit["account_fit_score"] < 50:
         return "Revise for account fit: align pacing and structure with your best recent uploads."
     return "Good test candidate after one polish pass on pacing, audio sync, and dead zones."
+
+
+def _engagement_forecast(
+    predicted_views: int,
+    account_summary: dict[str, Any] | None,
+    scores: dict[str, Any],
+    account_fit: dict[str, Any],
+) -> dict[str, Any]:
+    if not account_summary or not predicted_views:
+        return {
+            "source": "fallback",
+            "summary": "Connect TikTok to estimate comments, shares, and engagement from your account averages.",
+            "predicted_likes": None,
+            "predicted_comments": None,
+            "predicted_shares": None,
+            "expected_engagement_rate_pct": None,
+        }
+
+    avg_views = max(1, int(account_summary.get("average_views") or 1))
+    avg_likes = int(account_summary.get("average_likes") or 0)
+    avg_comments = int(account_summary.get("average_comments") or 0)
+    avg_shares = int(account_summary.get("average_shares") or 0)
+    quality_lift = 1.0 + ((float(scores.get("viral_score") or 50) - 50) / 100) * 0.18
+    fit_lift = 1.0 + (((account_fit.get("account_fit_score") or 50) - 50) / 100) * 0.16
+    trend_lift = 1.0 + (((account_fit.get("trend_fit_score") or 50) - 50) / 100) * 0.12
+    factor = max(0.55, min(1.55, quality_lift * fit_lift * trend_lift))
+
+    like_rate = avg_likes / avg_views
+    comment_rate = avg_comments / avg_views
+    share_rate = avg_shares / avg_views
+    likes = int(round(predicted_views * like_rate * factor))
+    comments = int(round(predicted_views * comment_rate * factor))
+    shares = int(round(predicted_views * share_rate * factor))
+    er = ((likes + comments + shares) / max(1, predicted_views)) * 100
+    return {
+        "source": "account_average_trend",
+        "summary": (
+            "Estimated from your connected account averages, adjusted by current video strength, "
+            "account fit, and recent trend."
+        ),
+        "predicted_likes": likes,
+        "predicted_comments": comments,
+        "predicted_shares": shares,
+        "expected_engagement_rate_pct": round(er, 2),
+        "baseline_average_views": avg_views,
+        "adjustment_factor": round(factor, 3),
+    }
 
 
 def _format_views(n: int) -> str:

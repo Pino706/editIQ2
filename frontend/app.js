@@ -31,6 +31,11 @@ const rankedTbody = document.getElementById("ranked-tbody");
 const datasetProgressText = document.getElementById("dataset-progress-text");
 const datasetProgressFill = document.getElementById("dataset-progress-fill");
 const viewsModelBadge = document.getElementById("views-model-badge");
+const trainStyleProfileInput = document.getElementById("train-style-profile");
+const trainNicheInput = document.getElementById("train-niche");
+const datasetQualityScore = document.getElementById("dataset-quality-score");
+const datasetQualitySummary = document.getElementById("dataset-quality-summary");
+const datasetQualityChecks = document.getElementById("dataset-quality-checks");
 const accountEmpty = document.getElementById("account-empty");
 const accountDashboard = document.getElementById("account-dashboard");
 const refreshAccountBtn = document.getElementById("refresh-account-btn");
@@ -42,6 +47,7 @@ const cookieCloseBtn = document.getElementById("cookie-close-btn");
 const cookieDetails = document.getElementById("cookie-details");
 const cookieSettingsBtn = document.getElementById("cookie-settings-btn");
 const privacyWidget = document.getElementById("privacy-widget");
+const toastStack = document.getElementById("toast-stack");
 
 let trainingQueue = [];
 const COOKIE_CONSENT_KEY = "editiq_cookie_consent";
@@ -157,6 +163,42 @@ function initializeInterface() {
   });
 
   setupCookieConsent();
+}
+
+function showToast(message, tone = "info", actionLabel = "", onAction = null) {
+  if (!toastStack) {
+    console.log(message);
+    return;
+  }
+  const toast = document.createElement("div");
+  toast.className = `toast toast-${tone}`;
+  toast.innerHTML = `
+    <div>
+      <strong>${escapeHtml(tone === "error" ? "Needs attention" : tone === "success" ? "Done" : "EditIQ")}</strong>
+      <p>${escapeHtml(message)}</p>
+    </div>
+    ${actionLabel ? `<button type="button" class="toast-action">${escapeHtml(actionLabel)}</button>` : ""}
+    <button type="button" class="toast-close" aria-label="Dismiss">&times;</button>
+  `;
+  toastStack.appendChild(toast);
+  let closing = false;
+  const close = () => {
+    if (closing || !toast.isConnected) return;
+    closing = true;
+    toast.animate(
+      [
+        { opacity: 1, transform: "translateY(0)" },
+        { opacity: 0, transform: "translateY(8px)" },
+      ],
+      { duration: 160, easing: "cubic-bezier(0.22, 1, 0.36, 1)" }
+    ).finished.finally(() => toast.remove());
+  };
+  toast.querySelector(".toast-close")?.addEventListener("click", close);
+  toast.querySelector(".toast-action")?.addEventListener("click", () => {
+    if (onAction) onAction();
+    close();
+  });
+  window.setTimeout(close, tone === "error" ? 7600 : 4600);
 }
 
 function setupCookieConsent() {
@@ -351,7 +393,7 @@ async function processAllTraining() {
     row.views = normalizeViewsInput(row.views);
     const n = Number(row.views);
     if (!row.views || !Number.isFinite(n) || n <= 0) {
-      alert(`Enter view count for: ${row.file.name}`);
+      showToast(`Enter view count for: ${row.file.name}`, "error");
       return;
     }
   }
@@ -373,6 +415,8 @@ async function processAllTraining() {
     const fd = new FormData();
     fd.append("file", row.file, row.file.name);
     fd.append("views", normalizeViewsInput(row.views));
+    if (trainStyleProfileInput?.value) fd.append("style_profile", trainStyleProfileInput.value);
+    if (trainNicheInput?.value) fd.append("niche", trainNicheInput.value);
 
     try {
       const res = await fetch(`${API}/api/analyze`, { method: "POST", body: fd });
@@ -411,24 +455,28 @@ trainViewsBtn.addEventListener("click", async () => {
     trainResultEl.textContent =
       `ML trained (${data.model_type || "views model"}) on ${data.samples} videos - CV R2 ${data.cv_r2 ?? data.test_r2} - typical error +/-${formatViews(data.mae_views)} views`;
     if (data.feature_importances) renderImportanceChart(data.feature_importances);
+    showToast("Views model trained successfully.", "success");
     await refreshTrainingLab();
     await loadHistory();
   } catch (err) {
     trainResultEl.textContent = err.message;
+    showToast(err.message || "Training failed.", "error");
   } finally {
     trainViewsBtn.disabled = false;
   }
 });
 
 async function refreshTrainingLab() {
-  const [statsRes, labeledRes, statusRes] = await Promise.all([
+  const [statsRes, labeledRes, statusRes, qualityRes] = await Promise.all([
     fetch(`${API}/api/dataset/stats`),
     fetch(`${API}/api/dataset/labeled`),
     fetch(`${API}/api/views-model-status`),
+    fetch(`${API}/api/dataset/quality`),
   ]);
   const stats = await statsRes.json();
   const labeled = await labeledRes.json();
   const status = await statusRes.json();
+  const quality = await qualityRes.json();
 
   const warnEl = document.getElementById("train-warning");
   if (stats.can_train && !status.trained) {
@@ -458,11 +506,30 @@ async function refreshTrainingLab() {
   } else {
     viewsModelBadge.textContent = "Model not trained";
     viewsModelBadge.className = "badge badge-muted";
-    modelStatusEl.textContent = status.message || "Train with 10+ labeled videos.";
+    modelStatusEl.textContent = status.message || "Train with 5+ labels; 10+ is better for directional reads.";
   }
 
   renderRankedTable(labeled.items || []);
   renderDatasetChart(labeled.items || []);
+  renderDatasetQuality(quality);
+}
+
+function renderDatasetQuality(quality) {
+  if (!datasetQualityScore || !datasetQualitySummary || !datasetQualityChecks) return;
+  const score = Math.round(Number(quality.score || 0));
+  datasetQualityScore.textContent = `${score}/100`;
+  datasetQualityScore.className = `badge ${score >= 70 ? "badge-ok" : score >= 45 ? "badge-watch" : "badge-muted"}`;
+  datasetQualitySummary.textContent = quality.summary || "Add labeled videos to measure style focus.";
+  datasetQualityChecks.innerHTML = (quality.checks || [])
+    .map(
+      (check) => `
+      <div class="quality-check quality-${escapeHtml(check.status || "watch")}">
+        <span>${escapeHtml(check.name)}</span>
+        <strong>${Math.round(Number(check.score || 0))}</strong>
+        <p>${escapeHtml(check.detail || "")}</p>
+      </div>`
+    )
+    .join("");
 }
 
 function renderRankedTable(items) {
@@ -555,13 +622,13 @@ form.addEventListener("submit", async (e) => {
   e.preventDefault();
   const file = videoInput.files[0];
   if (!file) {
-    alert("Please select a video file.");
+    showToast("Please select a video file.", "error");
     return;
   }
 
   const fd = new FormData();
   fd.append("file", file);
-  ["views", "likes", "shares", "saves", "retention_pct"].forEach((name) => {
+  ["views", "likes", "shares", "saves", "retention_pct", "style_profile", "niche", "caption", "hashtags", "sound_name"].forEach((name) => {
     const input = form.elements[name];
     if (input?.value) fd.append(name, input.value);
   });
@@ -578,10 +645,11 @@ form.addEventListener("submit", async (e) => {
     const data = await res.json();
     if (!res.ok) throw new Error(parseError(data));
     renderReport(data);
+    showToast("Analysis complete. Fix list and timeline are ready.", "success");
     await loadHistory();
     await loadViewsModelStatus();
   } catch (err) {
-    alert(err.message || String(err));
+    showToast(err.message || String(err), "error");
   } finally {
     clearInterval(stepTimer);
     showLoading(false);
@@ -621,6 +689,7 @@ function renderReport(data) {
   renderViewsJustification(data.views_justification || {});
   renderTierProbabilities(data.tier_probabilities || []);
   renderFeatureInsights(data.feature_insights || []);
+  renderActionPlan(data.action_plan || {}, data.duration || 0);
 
   setGauge("viral", s.viral_score);
   setGauge("hook", s.hook_score);
@@ -633,6 +702,56 @@ function renderReport(data) {
 
   renderCharts(data.timeline || {});
   renderQualityRadar(data.prediction || {});
+}
+
+function renderActionPlan(plan, duration) {
+  const fixes = plan.fixes || [];
+  const heatmap = plan.timeline_heatmap || [];
+  const summaries = plan.chart_summaries || {};
+  const fixSection = document.getElementById("fix-list-section");
+  const heatmapSection = document.getElementById("timeline-heatmap-section");
+  const fixList = document.getElementById("fix-list");
+  const heatmapEl = document.getElementById("timeline-heatmap");
+  const timelineSummary = document.getElementById("timeline-summary");
+  if (!fixSection || !heatmapSection || !fixList || !heatmapEl) return;
+
+  fixSection.classList.toggle("hidden", fixes.length === 0);
+  fixList.innerHTML = fixes
+    .map(
+      (fix, i) => `
+      <article class="fix-item fix-${escapeHtml(fix.kind || "general")}">
+        <span class="fix-rank">${i + 1}</span>
+        <div>
+          <strong>${escapeHtml(fix.title || "Fix")}</strong>
+          <p>${escapeHtml(fix.detail || "")}</p>
+          <small>${formatSeconds(fix.start)}-${formatSeconds(fix.end)}</small>
+        </div>
+      </article>`
+    )
+    .join("");
+
+  heatmapSection.classList.toggle("hidden", heatmap.length === 0);
+  const total = Math.max(Number(duration) || 0, ...heatmap.map((s) => Number(s.end) || 0), 1);
+  heatmapEl.innerHTML = heatmap
+    .map((seg) => {
+      const left = Math.max(0, (Number(seg.start || 0) / total) * 100);
+      const width = Math.max(4, ((Number(seg.end || 0) - Number(seg.start || 0)) / total) * 100);
+      return `
+        <button type="button" class="timeline-segment level-${escapeHtml(seg.level || "watch")}" style="left:${left}%;width:${Math.min(100 - left, width)}%" title="${escapeHtml(seg.reason || "")}">
+          <span>${escapeHtml(seg.label || "")}</span>
+        </button>`;
+    })
+    .join("");
+  timelineSummary.textContent = summaries.timeline || "";
+  const motionSummaryEl = document.getElementById("motion-chart-summary");
+  const audioSummaryEl = document.getElementById("audio-chart-summary");
+  if (motionSummaryEl) motionSummaryEl.textContent = summaries.motion || "";
+  if (audioSummaryEl) audioSummaryEl.textContent = summaries.audio || "";
+}
+
+function formatSeconds(value) {
+  const n = Number(value || 0);
+  return `${n.toFixed(n >= 10 ? 0 : 1)}s`;
 }
 
 function renderViewsJustification(j) {
@@ -694,7 +813,7 @@ function renderTierProbabilities(tiers) {
 function renderFeatureInsights(insights) {
   const tbody = document.getElementById("feature-insights-tbody");
   if (!insights.length) {
-    tbody.innerHTML = `<tr><td colspan="4">No insights yet. Train the views model with 10+ labeled videos.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="4">No insights yet. Train with 5+ labels; 10+ is better for directional reads.</td></tr>`;
     return;
   }
   tbody.innerHTML = insights
@@ -742,7 +861,7 @@ function renderPredictedViews(data) {
     valueEl.textContent = "-";
     subEl.textContent =
       data.views_model_message ||
-      "Train the views model with 10+ labeled videos in Train AI tab.";
+      "Train the views model with 5+ labeled videos in Train AI tab; 10+ is better.";
     compareEl.classList.add("hidden");
   }
 }
@@ -765,6 +884,10 @@ function renderAdvancedPrediction(data) {
     ["Trend fit", prediction.trend_fit_score],
     ["Visual quality", prediction.visual_quality_score],
   ];
+  const engagement = prediction.engagement_forecast || {};
+  if (engagement.expected_engagement_rate_pct != null) {
+    cards.push(["Engagement", engagement.expected_engagement_rate_pct, "%"]);
+  }
   grid.innerHTML = cards
     .map(([label, value, suffix]) => `
       <div class="mini-score-card">
@@ -885,7 +1008,7 @@ async function refreshTikTokAccount() {
     if (!res.ok) throw new Error(data.detail || "Refresh failed");
     renderTikTokAccount(data);
   } catch (err) {
-    alert(err.message || String(err));
+    showToast(err.message || String(err), "error");
   } finally {
     refreshAccountBtn.disabled = false;
   }
@@ -1045,6 +1168,7 @@ async function loadAnalysis(id) {
     tier_probabilities: row.tier_probabilities || [],
     feature_insights: row.feature_insights || [],
     views_justification: row.views_justification || {},
+    action_plan: row.action_plan || {},
   });
 }
 

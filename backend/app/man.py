@@ -1,3 +1,9 @@
+"""Legacy FastAPI snapshot.
+
+The active production app is `app.main`. This file is kept only as historical
+reference so old experiments do not get mixed into the current API surface.
+"""
+
 import os
 import shutil
 import tempfile

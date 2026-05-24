@@ -48,7 +48,18 @@ python scripts\verify.py
 | `app/intelligence.py` | Account-aware prediction layer |
 | `app/tiktok_client.py` | Server-side TikTok OAuth/API client |
 | `app/database.py` | SQLite persistence |
-| `static/` | Dashboard (HTML/CSS/JS) |
+| `frontend/` | Dashboard (HTML/CSS/JS) |
 | `docs/` | Architecture, roadmap, ML guide |
 
 Uploaded videos are processed in a temp folder and deleted after analysis. Only features, scores, and timeline curves are kept in `data/editiq.db`.
+
+## Operational endpoints
+
+| Path | Role |
+|------|------|
+| `/api/health` | Checks DB/model paths, FFmpeg/OpenCV, ML dependencies, TikTok config |
+| `/api/dataset/quality` | Reports style focus, view spread, duplicate risk, and training readiness |
+| `/api/export/dataset.csv` | Downloads the feature matrix and labels for backup/notebooks |
+| `/api/export/history.json` | Downloads full analysis history as JSON |
+
+Production note: local SQLite/model files are fine for desktop development. On serverless hosts, configure durable storage before relying on history or trained models.

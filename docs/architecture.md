@@ -88,3 +88,6 @@ flowchart LR
 | GET | `/api/analysis/{id}` | Full report |
 | POST | `/api/train` | Train GradientBoosting model |
 | GET | `/api/model-status` | Model metadata |
+| GET | `/api/health` | Runtime/dependency health check |
+| GET | `/api/dataset/quality` | Training-data quality and style-focus diagnostics |
+| GET | `/api/export/dataset.csv` | CSV export of feature matrix and labels |

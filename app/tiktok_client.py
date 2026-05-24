@@ -89,6 +89,7 @@ def build_login_url(state: str | None = None) -> str:
     if not settings.tiktok_configured:
         raise TikTokConfigError("TikTok OAuth is not configured.")
     state = state or create_oauth_state()
+    database.create_oauth_state(state)
     params = {
         "client_key": settings.tiktok_client_key,
         "scope": settings.tiktok_scopes,
@@ -101,6 +102,8 @@ def build_login_url(state: str | None = None) -> str:
 
 async def complete_oauth(code: str, state: str) -> dict[str, Any]:
     validate_oauth_state(state)
+    if not database.consume_oauth_state(state):
+        raise TikTokConfigError("OAuth state was already used or is unknown.")
     token = await _request_token(
         {
             "client_key": settings.tiktok_client_key,

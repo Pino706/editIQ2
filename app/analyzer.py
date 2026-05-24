@@ -21,6 +21,28 @@ SPIKE_WINDOW = 5
 AV_SYNC_TOLERANCE_S = 0.15
 
 
+def probe_video_metadata(video_path: str | Path) -> dict[str, float | int]:
+    """Read cheap container metadata before the expensive analysis pass."""
+    cap = cv2.VideoCapture(str(video_path))
+    if not cap.isOpened():
+        raise ValueError(f"Cannot open video: {video_path}")
+    try:
+        fps = float(cap.get(cv2.CAP_PROP_FPS) or 0.0)
+        frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
+        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH) or 0)
+        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT) or 0)
+        duration = frame_count / fps if fps > 0 and frame_count > 0 else 0.0
+        return {
+            "duration": duration,
+            "fps": fps,
+            "frame_count": frame_count,
+            "width": width,
+            "height": height,
+        }
+    finally:
+        cap.release()
+
+
 @dataclass
 class AnalysisResult:
     duration: float

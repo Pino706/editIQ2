@@ -89,6 +89,17 @@
               <label class="span-2">Retention % <input type="number" name="retention_pct" min="0" max="100" step="0.1" placeholder="Optional" /></label>
             </div>
 
+            <details class="context-details">
+              <summary>Fast context labels</summary>
+              <div class="metrics-grid context-grid">
+                <label>Edit style <input type="text" name="style_profile" placeholder="e.g. velocity anime" /></label>
+                <label>Niche <input type="text" name="niche" placeholder="e.g. TV edits" /></label>
+                <label>Sound <input type="text" name="sound_name" placeholder="Optional" /></label>
+                <label>Hashtags <input type="text" name="hashtags" placeholder="#edit #fyp" /></label>
+                <label class="span-2">Caption / hook text <input type="text" name="caption" placeholder="Optional caption or on-screen text" /></label>
+              </div>
+            </details>
+
             <button type="submit" class="btn-primary" id="analyze-btn">
               <i data-lucide="sparkles"></i>
               <span>Analyze Video</span>
@@ -181,6 +192,25 @@
           </div>
         </div>
 
+        <div class="editor-intel-grid">
+          <section id="fix-list-section" class="insight-panel hidden">
+            <div class="panel-heading">
+              <h3>Fix first</h3>
+              <span class="panel-chip">Priority order</span>
+            </div>
+            <div id="fix-list" class="fix-list"></div>
+          </section>
+
+          <section id="timeline-heatmap-section" class="insight-panel hidden">
+            <div class="panel-heading">
+              <h3>Editor timeline</h3>
+              <span class="panel-chip">Risk heatmap</span>
+            </div>
+            <div id="timeline-heatmap" class="timeline-heatmap"></div>
+            <p id="timeline-summary" class="chart-summary"></p>
+          </section>
+        </div>
+
         <div class="insight-columns">
           <div id="justification-section" class="insight-panel hidden">
             <h3>Why this view count?</h3>
@@ -214,10 +244,12 @@
           <div class="chart-card">
             <h3>Motion over time</h3>
             <canvas id="motion-chart"></canvas>
+            <p id="motion-chart-summary" class="chart-summary"></p>
           </div>
           <div class="chart-card">
             <h3>Audio energy</h3>
             <canvas id="audio-chart"></canvas>
+            <p id="audio-chart-summary" class="chart-summary"></p>
           </div>
         </div>
 
@@ -254,6 +286,11 @@
               </div>
               <p id="train-warning" class="train-warning hidden"></p>
 
+              <div class="metrics-grid train-context-grid">
+                <label>Default style <input type="text" id="train-style-profile" placeholder="e.g. velocity anime" /></label>
+                <label>Niche <input type="text" id="train-niche" placeholder="e.g. TV edits" /></label>
+              </div>
+
               <div class="dataset-progress-wrap">
                 <div class="dataset-progress-label">
                   <span id="dataset-progress-text">0 / 200 labeled</span>
@@ -287,6 +324,10 @@
                   <i data-lucide="brain-circuit"></i>
                   <span>Train views model</span>
                 </button>
+                <a class="btn-secondary export-link" href="/api/export/dataset.csv">
+                  <i data-lucide="download"></i>
+                  <span>Export CSV</span>
+                </a>
                 <span id="process-progress" class="process-progress"></span>
               </div>
 
@@ -302,6 +343,14 @@
                 <li><strong>Train views model</strong> fits your local ML model.</li>
                 <li><strong>Analyze</strong> predicts views on fresh uploads.</li>
               </ol>
+            </div>
+            <div class="flow-panel dataset-quality-panel">
+              <div class="panel-heading">
+                <h2>Dataset quality</h2>
+                <span id="dataset-quality-score" class="badge badge-muted">0/100</span>
+              </div>
+              <p id="dataset-quality-summary" class="quality-summary">Add labeled videos to measure style focus.</p>
+              <div id="dataset-quality-checks" class="quality-checks"></div>
             </div>
           </aside>
         </div>
@@ -469,6 +518,8 @@
       </div>
     </div>
   </section>
+
+  <div class="toast-stack" id="toast-stack" aria-live="polite" aria-label="Notifications"></div>
 
   <script src="/static/app.js"></script>
 </body>

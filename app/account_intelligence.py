@@ -43,6 +43,7 @@ def summarize_account(account: dict[str, Any], videos: list[dict[str, Any]]) -> 
     avg_likes = int(statistics.mean(like_values)) if like_values else None
     avg_comments = int(statistics.mean(comment_values)) if comment_values else None
     avg_shares = int(statistics.mean(share_values)) if share_values else None
+    safe_avg_views = max(1, avg_views or 0)
     momentum = _momentum_score(view_values, trend, frequency)
 
     return {
@@ -54,6 +55,10 @@ def summarize_account(account: dict[str, Any], videos: list[dict[str, Any]]) -> 
         "average_likes": avg_likes,
         "average_comments": avg_comments,
         "average_shares": avg_shares,
+        "like_rate_pct": round(((avg_likes or 0) / safe_avg_views) * 100, 2) if avg_views else None,
+        "comment_rate_pct": round(((avg_comments or 0) / safe_avg_views) * 100, 2) if avg_views else None,
+        "share_rate_pct": round(((avg_shares or 0) / safe_avg_views) * 100, 2) if avg_views else None,
+        "engagement_rate_pct": round((((avg_likes or 0) + (avg_comments or 0) + (avg_shares or 0)) / safe_avg_views) * 100, 2) if avg_views else None,
         "posting_frequency_per_week": frequency,
         "recent_growth_trend": trend,
         "best_recent_video": best,
