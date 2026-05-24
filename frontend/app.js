@@ -34,8 +34,17 @@ const viewsModelBadge = document.getElementById("views-model-badge");
 const accountEmpty = document.getElementById("account-empty");
 const accountDashboard = document.getElementById("account-dashboard");
 const refreshAccountBtn = document.getElementById("refresh-account-btn");
+const cookieConsent = document.getElementById("cookie-consent");
+const cookieAcceptBtn = document.getElementById("cookie-accept-btn");
+const cookieRejectBtn = document.getElementById("cookie-reject-btn");
+const cookieMoreBtn = document.getElementById("cookie-more-btn");
+const cookieCloseBtn = document.getElementById("cookie-close-btn");
+const cookieDetails = document.getElementById("cookie-details");
+const cookieSettingsBtn = document.getElementById("cookie-settings-btn");
+const privacyWidget = document.getElementById("privacy-widget");
 
 let trainingQueue = [];
+const COOKIE_CONSENT_KEY = "editiq_cookie_consent";
 
 const LOADING_STEPS = [
   "Extracting audio...",
@@ -145,6 +154,129 @@ function initializeInterface() {
         { duration: 180, easing: "cubic-bezier(0.22, 1, 0.36, 1)" }
       );
     });
+  });
+
+  setupCookieConsent();
+}
+
+function setupCookieConsent() {
+  if (hasTermlyCookieManager()) {
+    cookieConsent?.classList.add("hidden");
+    privacyWidget?.classList.add("hidden");
+    cookieSettingsBtn?.addEventListener("click", reopenCookiePreferences);
+    privacyWidget?.addEventListener("click", reopenCookiePreferences);
+    return;
+  }
+
+  const saved = readCookieConsent();
+  if (!saved) {
+    showCookieBanner();
+  } else {
+    privacyWidget?.classList.remove("hidden");
+    applyConsentState(saved);
+  }
+
+  cookieAcceptBtn?.addEventListener("click", () => saveCookieConsent(true));
+  cookieRejectBtn?.addEventListener("click", () => saveCookieConsent(false));
+  cookieCloseBtn?.addEventListener("click", () => saveCookieConsent(false));
+  cookieMoreBtn?.addEventListener("click", () => {
+    cookieDetails?.classList.toggle("hidden");
+    cookieMoreBtn.querySelector("span").textContent =
+      cookieDetails?.classList.contains("hidden") ? "Not sure" : "Hide details";
+  });
+  cookieSettingsBtn?.addEventListener("click", () => {
+    reopenCookiePreferences();
+  });
+  privacyWidget?.addEventListener("click", reopenCookiePreferences);
+}
+
+function hasTermlyCookieManager() {
+  return Boolean(document.querySelector('script[src*="app.termly.io/resource-blocker"]'));
+}
+
+function openTermlyPreferences() {
+  if (typeof window.displayPreferenceModal === "function") {
+    window.displayPreferenceModal();
+    return true;
+  }
+  if (window.Termly && typeof window.Termly.showPreferences === "function") {
+    window.Termly.showPreferences();
+    return true;
+  }
+  return false;
+}
+
+function readCookieConsent() {
+  try {
+    return JSON.parse(localStorage.getItem(COOKIE_CONSENT_KEY));
+  } catch {
+    return null;
+  }
+}
+
+function showCookieBanner() {
+  cookieConsent?.classList.remove("hidden");
+  privacyWidget?.classList.add("hidden");
+  if (window.lucide) window.lucide.createIcons({ attrs: { "aria-hidden": "true" } });
+}
+
+function hideCookieBanner() {
+  if (!cookieConsent) return;
+  const panel = cookieConsent.querySelector(".cookie-panel");
+  const animation = panel?.animate(
+    [
+      { opacity: 1, transform: "translateY(0) scale(1)" },
+      { opacity: 0, transform: "translateY(14px) scale(0.985)" },
+    ],
+    { duration: 220, easing: "cubic-bezier(0.22, 1, 0.36, 1)" }
+  );
+  if (!animation) {
+    cookieConsent.classList.add("hidden");
+    privacyWidget?.classList.remove("hidden");
+    return;
+  }
+  animation.finished.finally(() => {
+    cookieConsent.classList.add("hidden");
+    privacyWidget?.classList.remove("hidden");
+  });
+}
+
+function saveCookieConsent(analyticsAccepted) {
+  const consent = {
+    necessary: true,
+    analytics: Boolean(analyticsAccepted),
+    saleOrShare: false,
+    decidedAt: new Date().toISOString(),
+  };
+  localStorage.setItem(COOKIE_CONSENT_KEY, JSON.stringify(consent));
+  applyConsentState(consent);
+  hideCookieBanner();
+}
+
+function reopenCookiePreferences() {
+  if (openTermlyPreferences()) return;
+  if (!cookieMoreBtn) return;
+  cookieDetails?.classList.remove("hidden");
+  cookieMoreBtn.querySelector("span").textContent = "Hide details";
+  showCookieBanner();
+}
+
+function applyConsentState(consent) {
+  window.editiqConsent = consent;
+  document.documentElement.dataset.analyticsConsent = consent.analytics ? "granted" : "denied";
+  if (consent.analytics) loadConsentedScripts("analytics");
+}
+
+function loadConsentedScripts(category) {
+  document.querySelectorAll(`script[type="text/plain"][data-consent="${category}"]`).forEach((script) => {
+    const activeScript = document.createElement("script");
+    for (const attr of script.attributes) {
+      if (attr.name !== "type" && attr.name !== "data-consent") {
+        activeScript.setAttribute(attr.name, attr.value);
+      }
+    }
+    activeScript.text = script.text;
+    script.replaceWith(activeScript);
   });
 }
 

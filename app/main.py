@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import re
-import secrets
 import shutil
 import tempfile
 from pathlib import Path
 from typing import Annotated
+from urllib.parse import quote
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, RedirectResponse
@@ -30,7 +30,13 @@ from app.text_model import generate_analysis_advice
 from app.tiktok_knowledge import doc_loaded, load_algorithm_doc
 from app.view_tiers import predict_tier_probabilities
 
-STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+STATIC_DIR = (
+    PROJECT_ROOT / "frontend"
+    if (PROJECT_ROOT / "frontend" / "index.html").exists()
+    else PROJECT_ROOT / "static"
+)
+TIKTOK_VERIFICATION_FILE = "tiktokznm3K87KIom2s7CoSPfgatDPVse1jFFD.txt"
 
 app = FastAPI(title="EditIQ", description="TikTok Edit Analyzer", version="1.0.0")
 
@@ -303,9 +309,8 @@ def tiktok_login():
         raise HTTPException(503, "TikTok OAuth is not configured on the server.")
     if not settings.token_encryption_key:
         raise HTTPException(503, "TOKEN_ENCRYPTION_KEY is required before connecting TikTok.")
-    state = secrets.token_urlsafe(32)
     try:
-        return RedirectResponse(tiktok_client.build_login_url(state))
+        return RedirectResponse(tiktok_client.build_login_url())
     except Exception as exc:
         raise HTTPException(500, str(exc)) from exc
 
@@ -319,7 +324,8 @@ async def tiktok_callback(code: str | None = None, state: str | None = None, err
     try:
         await tiktok_client.complete_oauth(code=code, state=state)
     except Exception as exc:
-        return RedirectResponse(f"/?tiktok=error&reason={type(exc).__name__}")
+        detail = quote(str(exc) or type(exc).__name__)
+        return RedirectResponse(f"/?tiktok=error&reason={type(exc).__name__}&detail={detail}")
     return RedirectResponse("/?tiktok=connected")
 
 
@@ -355,6 +361,30 @@ async def tiktok_refresh():
 def tiktok_disconnect():
     database.disconnect_tiktok_account()
     return {"connected": False}
+
+
+@app.get(f"/{TIKTOK_VERIFICATION_FILE}")
+async def tiktok_verification_file():
+    verification_path = STATIC_DIR / TIKTOK_VERIFICATION_FILE
+    if not verification_path.exists():
+        raise HTTPException(404, "Verification file not found")
+    return FileResponse(verification_path, media_type="text/plain; charset=utf-8")
+
+
+@app.get("/{page_name}")
+async def static_page(page_name: str):
+    allowed_pages = {
+        "privacy": "privacy.html",
+        "cookie-policy": "cookie-policy.html",
+        "terms": "terms.html",
+        "do-not-sell": "do-not-sell.html",
+    }
+    if page_name not in allowed_pages:
+        raise HTTPException(404, "Page not found")
+    page_path = STATIC_DIR / allowed_pages[page_name]
+    if not page_path.exists():
+        raise HTTPException(404, "Page not found")
+    return FileResponse(page_path)
 
 
 @app.get("/")

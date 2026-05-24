@@ -18,13 +18,16 @@ Open [http://127.0.0.1:8000](http://127.0.0.1:8000) · API docs: [http://127.0.0
 Create a local `.env` or set these environment variables before starting the server:
 
 ```powershell
-$env:TOKEN_ENCRYPTION_KEY="9f3c1a7b6e2d4c8f91a0d3e7c5b2a8d1f4e6c9b0a1d2f3e4"
-$env:TIKTOK_CLIENT_KEY="awcjq9ps11j7yb89"
-$env:TIKTOK_CLIENT_SECRET="HTwzovC9IyNi1KvBBvMT3lY2qp9AhopB"
+$env:TOKEN_ENCRYPTION_KEY="replace-with-a-long-random-secret"
+$env:TIKTOK_CLIENT_KEY="replace-with-your-tiktok-client-key"
+$env:TIKTOK_CLIENT_SECRET="replace-with-your-tiktok-client-secret"
 $env:TIKTOK_REDIRECT_URI="http://127.0.0.1:8000/api/tiktok/callback"
+$env:TIKTOK_SCOPES="user.info.basic,user.info.profile,user.info.stats,video.list"
 $env:OLLAMA_BASE_URL="http://127.0.0.1:11434"
 $env:OLLAMA_MODEL="llama3:latest"
 ```
+
+You can also copy `.env.example` to `.env` and fill in the TikTok app values from the TikTok Developer portal. The redirect URI in TikTok must match `TIKTOK_REDIRECT_URI` exactly.
 
 TikTok OAuth runs only through the backend. Tokens are encrypted before storage and are never exposed to the frontend. Ollama is used as a local helper for explanations and advice; if it is offline, EditIQ falls back to deterministic guidance.
 

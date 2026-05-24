@@ -5,6 +5,15 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 
+try:
+    from dotenv import load_dotenv
+except ImportError:  # pragma: no cover - keeps production imports resilient.
+    load_dotenv = None
+
+
+if load_dotenv:
+    load_dotenv()
+
 
 def _env(name: str, default: str = "") -> str:
     return os.getenv(name, default).strip()

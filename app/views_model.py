@@ -3,20 +3,23 @@
 from __future__ import annotations
 
 import json
+import os
 import pickle
+import tempfile
 from pathlib import Path
 from typing import Any
 
-import numpy as np
-import pandas as pd
-from sklearn.ensemble import ExtraTreesRegressor
-from sklearn.metrics import mean_absolute_error, r2_score
-from sklearn.model_selection import KFold
-from sklearn.preprocessing import StandardScaler
-
 from app import database
 
-MODEL_DIR = Path(__file__).resolve().parent.parent / "data" / "models"
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+MODEL_DIR = Path(
+    os.getenv(
+        "EDITIQ_MODEL_DIR",
+        str(Path(tempfile.gettempdir()) / "editiq-models")
+        if os.getenv("VERCEL")
+        else str(PROJECT_ROOT / "data" / "models"),
+    )
+)
 MODEL_PATH = MODEL_DIR / "views_model.pkl"
 META_PATH = MODEL_DIR / "views_model_meta.json"
 
@@ -71,6 +74,19 @@ def get_model_status() -> dict[str, Any]:
 
 
 def train_model() -> dict[str, Any]:
+    try:
+        import numpy as np
+        import pandas as pd
+        from sklearn.ensemble import ExtraTreesRegressor
+        from sklearn.metrics import mean_absolute_error, r2_score
+        from sklearn.model_selection import KFold
+        from sklearn.preprocessing import StandardScaler
+    except ImportError:
+        return {
+            "success": False,
+            "message": "Training dependencies are not installed in this deployment.",
+        }
+
     rows = database.list_labeled_for_training()
     if len(rows) < MIN_SAMPLES:
         return {
@@ -243,6 +259,8 @@ def train_model() -> dict[str, Any]:
 def predict_views(features: dict[str, Any]) -> dict[str, Any] | None:
     if not MODEL_PATH.exists():
         return None
+    import numpy as np
+
     with open(MODEL_PATH, "rb") as f:
         bundle = pickle.load(f)
 

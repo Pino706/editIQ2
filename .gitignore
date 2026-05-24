@@ -5,3 +5,8 @@ data/
 uploads/
 *.db
 .DS_Store
+
+.vercel
+.env
+.env.*
+!.env.example

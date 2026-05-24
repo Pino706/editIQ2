@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/static/app.css" />
+  <script src="https://app.termly.io/resource-blocker/3cb657a8-cb38-4967-bcce-dd71a28f98a4?autoBlock=on"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 </head>
@@ -412,9 +413,62 @@
 
   <footer class="footer">
     <a href="/docs" target="_blank">API Docs</a>
+    <a href="/privacy">Privacy Policy</a>
+    <a href="/cookie-policy">Cookie Policy</a>
+    <a href="/do-not-sell">Do Not Sell or Share</a>
+    <button type="button" class="footer-link" id="cookie-settings-btn">Cookie settings</button>
     <span>Videos deleted after processing</span>
     <span>FFmpeg + OpenCV</span>
   </footer>
+
+  <button type="button" class="privacy-widget hidden" id="privacy-widget" aria-label="Open privacy choices">
+    <i data-lucide="shield"></i>
+    <span>Privacy choices</span>
+  </button>
+
+  <section class="cookie-consent hidden" id="cookie-consent" aria-label="Cookie preferences" aria-live="polite">
+    <div class="cookie-panel">
+      <button type="button" class="cookie-close" id="cookie-close-btn" aria-label="Close cookie banner">
+        <i data-lucide="x"></i>
+      </button>
+      <div class="cookie-copy">
+        <p class="eyebrow">Privacy choice</p>
+        <h2>Cookies, kept simple.</h2>
+        <p>
+          We use essential storage to remember your choice. Optional analytics stay off unless you accept them.
+          You can update this anytime from Privacy choices.
+        </p>
+        <p class="cookie-policy-line">
+          Read the <a href="/cookie-policy">Cookie Policy</a>, <a href="/privacy">Privacy Policy</a>, or
+          <a href="/do-not-sell">Do Not Sell or Share My Personal Information</a>.
+        </p>
+        <div class="cookie-details hidden" id="cookie-details">
+          <div>
+            <span>Essential</span>
+            <strong>Always on</strong>
+          </div>
+          <div>
+            <span>Optional analytics</span>
+            <strong>Only after consent</strong>
+          </div>
+        </div>
+      </div>
+      <div class="cookie-actions">
+        <button type="button" class="cookie-choice cookie-action" id="cookie-reject-btn">
+          <i data-lucide="shield-check"></i>
+          <span>Reject all</span>
+        </button>
+        <button type="button" class="btn-secondary cookie-action" id="cookie-more-btn">
+          <i data-lucide="circle-help"></i>
+          <span>Not sure</span>
+        </button>
+        <button type="button" class="cookie-choice cookie-action" id="cookie-accept-btn">
+          <i data-lucide="check"></i>
+          <span>Accept all</span>
+        </button>
+      </div>
+    </div>
+  </section>
 
   <script src="/static/app.js"></script>
 </body>

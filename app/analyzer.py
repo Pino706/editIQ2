@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import subprocess
 import tempfile
+import wave
 from dataclasses import dataclass, field
 from pathlib import Path
 
 import cv2
 import imageio_ffmpeg
 import numpy as np
-from scipy.io import wavfile
 
 PROCESS_HEIGHT = 240
 FRAME_SKIP = 2
@@ -152,10 +152,7 @@ def _analyze_audio(wav_path: Path, result: AnalysisResult) -> dict:
     if not wav_path.exists() or wav_path.stat().st_size == 0:
         return _empty_audio(result)
 
-    sample_rate, audio = wavfile.read(wav_path)
-    if audio.ndim > 1:
-        audio = audio.mean(axis=1)
-    audio = audio.astype(np.float64)
+    sample_rate, audio = _read_wav_mono(wav_path)
     if np.max(np.abs(audio)) > 0:
         audio = audio / np.max(np.abs(audio))
 
@@ -204,6 +201,24 @@ def _analyze_audio(wav_path: Path, result: AnalysisResult) -> dict:
         "energy_curve": energies_arr.tolist(),
         "sample_rate": sample_rate,
     }
+
+
+def _read_wav_mono(wav_path: Path) -> tuple[int, np.ndarray]:
+    with wave.open(str(wav_path), "rb") as wav:
+        sample_rate = wav.getframerate()
+        channels = wav.getnchannels()
+        sample_width = wav.getsampwidth()
+        frames = wav.readframes(wav.getnframes())
+
+    dtype = np.int16 if sample_width == 2 else np.uint8
+    audio = np.frombuffer(frames, dtype=dtype)
+    if sample_width == 1:
+        audio = audio.astype(np.float64) - 128.0
+    else:
+        audio = audio.astype(np.float64)
+    if channels > 1:
+        audio = audio.reshape(-1, channels).mean(axis=1)
+    return sample_rate, audio
 
 
 def _resize_frame(frame: np.ndarray, target_h: int) -> np.ndarray:

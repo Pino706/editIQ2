@@ -3,6 +3,11 @@
 from __future__ import annotations
 
 import time
+import base64
+import hashlib
+import hmac
+import json
+import secrets
 from typing import Any
 from urllib.parse import urlencode
 
@@ -56,10 +61,34 @@ class TikTokConfigError(RuntimeError):
     pass
 
 
-def build_login_url(state: str) -> str:
+def create_oauth_state() -> str:
+    payload = {
+        "nonce": secrets.token_urlsafe(24),
+        "iat": int(time.time()),
+    }
+    body = _b64url(json.dumps(payload, separators=(",", ":")).encode("utf-8"))
+    sig = _b64url(_state_signature(body))
+    return f"{body}.{sig}"
+
+
+def validate_oauth_state(state: str, max_age_seconds: int = 900) -> None:
+    try:
+        body, sig = state.split(".", 1)
+        expected = _b64url(_state_signature(body))
+        if not hmac.compare_digest(sig, expected):
+            raise ValueError("signature mismatch")
+        payload = json.loads(_b64url_decode(body))
+        issued_at = int(payload["iat"])
+    except Exception as exc:
+        raise TikTokConfigError("Invalid OAuth state.") from exc
+    if issued_at < int(time.time()) - max_age_seconds:
+        raise TikTokConfigError("Expired OAuth state.")
+
+
+def build_login_url(state: str | None = None) -> str:
     if not settings.tiktok_configured:
         raise TikTokConfigError("TikTok OAuth is not configured.")
-    database.create_oauth_state(state)
+    state = state or create_oauth_state()
     params = {
         "client_key": settings.tiktok_client_key,
         "scope": settings.tiktok_scopes,
@@ -71,8 +100,7 @@ def build_login_url(state: str) -> str:
 
 
 async def complete_oauth(code: str, state: str) -> dict[str, Any]:
-    if not database.consume_oauth_state(state):
-        raise TikTokConfigError("Invalid or expired OAuth state.")
+    validate_oauth_state(state)
     token = await _request_token(
         {
             "client_key": settings.tiktok_client_key,
@@ -87,6 +115,25 @@ async def complete_oauth(code: str, state: str) -> dict[str, Any]:
     videos = await fetch_recent_videos(token["access_token"])
     database.upsert_tiktok_videos(profile["open_id"], videos)
     return {"profile": profile, "videos": videos}
+
+
+def _state_signature(body: str) -> bytes:
+    if not settings.token_encryption_key:
+        raise TikTokConfigError("TOKEN_ENCRYPTION_KEY is required before connecting TikTok.")
+    return hmac.new(
+        settings.token_encryption_key.encode("utf-8"),
+        body.encode("utf-8"),
+        hashlib.sha256,
+    ).digest()
+
+
+def _b64url(data: bytes) -> str:
+    return base64.urlsafe_b64encode(data).decode("ascii").rstrip("=")
+
+
+def _b64url_decode(data: str) -> str:
+    padded = data + ("=" * (-len(data) % 4))
+    return base64.urlsafe_b64decode(padded.encode("ascii")).decode("utf-8")
 
 
 async def refresh_connected_account() -> dict[str, Any]:

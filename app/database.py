@@ -3,13 +3,23 @@
 from __future__ import annotations
 
 import json
+import os
 import sqlite3
+import tempfile
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-DB_PATH = Path(__file__).resolve().parent.parent / "data" / "editiq.db"
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+DB_PATH = Path(
+    os.getenv(
+        "EDITIQ_DB_PATH",
+        str(Path(tempfile.gettempdir()) / "editiq.db")
+        if os.getenv("VERCEL")
+        else str(PROJECT_ROOT / "data" / "editiq.db"),
+    )
+)
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS videos (

@@ -8,11 +8,6 @@ import pickle
 from pathlib import Path
 from typing import Any
 
-import numpy as np
-import pandas as pd
-from sklearn.ensemble import GradientBoostingClassifier
-from sklearn.preprocessing import StandardScaler
-
 from app import database
 from app.views_model import FEATURE_COLUMNS, MODEL_DIR
 
@@ -46,6 +41,13 @@ def tier_midpoint(index: int) -> float:
 
 
 def train_tier_classifier() -> bool:
+    try:
+        import pandas as pd
+        from sklearn.ensemble import GradientBoostingClassifier
+        from sklearn.preprocessing import StandardScaler
+    except ImportError:
+        return False
+
     rows = database.list_labeled_for_training()
     if len(rows) < 5:
         return False
@@ -76,6 +78,8 @@ def train_tier_classifier() -> bool:
 
 
 def _views_based_probs(predicted_views: int, sigma_log: float = 0.85) -> np.ndarray:
+    import numpy as np
+
     """Soft assignment of predicted views across tiers (log-normal spread)."""
     log_v = math.log1p(max(0, predicted_views))
     probs = np.zeros(len(VIEW_TIERS))
@@ -91,6 +95,8 @@ def predict_tier_probabilities(
     features: dict[str, Any],
     predicted_views: int | None,
 ) -> list[dict[str, Any]]:
+    import numpy as np
+
     rows = database.list_labeled_for_training()
     n = len(rows)
 
