@@ -8,8 +8,7 @@ import wave
 from dataclasses import dataclass, field
 from pathlib import Path
 
-import cv2
-import imageio_ffmpeg
+# cv2 and imageio_ffmpeg are imported lazily to avoid heavy serverless cold starts and memory footprints
 import numpy as np
 
 PROCESS_HEIGHT = 240
@@ -23,6 +22,7 @@ AV_SYNC_TOLERANCE_S = 0.15
 
 def probe_video_metadata(video_path: str | Path) -> dict[str, float | int]:
     """Read cheap container metadata before the expensive analysis pass."""
+    import cv2
     cap = cv2.VideoCapture(str(video_path))
     if not cap.isOpened():
         raise ValueError(f"Cannot open video: {video_path}")
@@ -145,6 +145,7 @@ def _compute_derived_scores(result: AnalysisResult) -> None:
 
 
 def _extract_audio(video_path: Path, wav_path: Path) -> bool:
+    import imageio_ffmpeg
     ffmpeg = imageio_ffmpeg.get_ffmpeg_exe()
     cmd = [
         ffmpeg,
@@ -244,6 +245,7 @@ def _read_wav_mono(wav_path: Path) -> tuple[int, np.ndarray]:
 
 
 def _resize_frame(frame: np.ndarray, target_h: int) -> np.ndarray:
+    import cv2
     h, w = frame.shape[:2]
     if h <= target_h:
         return frame
@@ -253,6 +255,7 @@ def _resize_frame(frame: np.ndarray, target_h: int) -> np.ndarray:
 
 
 def _hist_diff(frame_a: np.ndarray, frame_b: np.ndarray) -> float:
+    import cv2
     hsv_a = cv2.cvtColor(frame_a, cv2.COLOR_BGR2HSV)
     hsv_b = cv2.cvtColor(frame_b, cv2.COLOR_BGR2HSV)
     hist_a = cv2.calcHist([hsv_a], [0, 1], None, [32, 32], [0, 180, 0, 256])
@@ -267,6 +270,7 @@ def _analyze_video_frames(
     result: AnalysisResult,
     audio_data: dict,
 ) -> None:
+    import cv2
     cap = cv2.VideoCapture(str(video_path))
     if not cap.isOpened():
         raise ValueError(f"Cannot open video: {video_path}")
